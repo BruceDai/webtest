@@ -1,399 +1,153 @@
 'use strict';
 
 const fs = require('fs');
-const path = require('path');
-const {spawnSync} = require('child_process');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 const readline = require('readline');
 
-const parseTrace = require('./trace.js');
 const util = require('./util.js')
 
-let errorMsg = '';
-const errorMsgMaxLength = 200;
-
-function cartesianProduct(arr) {
-  return arr.reduce(function(a, b) {
-    return a
-        .map(function(x) {
-          return b.map(function(y) {
-            return x.concat([y]);
-          })
-        })
-        .reduce(function(a, b) {
-          return a.concat(b)
-        }, [])
-  }, [[]])
-}
-
-function intersect(a, b) {
-  if (!Array.isArray(a)) {
-    a = [a];
-  }
-  if (!Array.isArray(b)) {
-    b = [b];
-  }
-  return a.filter(v => b.includes(v));
-}
-
-async function startContext(traceFile = undefined) {
-  let extraBrowserArgs = '';
-  if ('trace' in util.args) {
-    extraBrowserArgs = `--trace-startup-file=${traceFile}`;
-  }
-
-  if (!util.dryrun) {
-    let context = await puppeteer.launch({
-      args: util['browserArgs'].split(' ').concat(extraBrowserArgs.split(' ')),
-      defaultViewport: null,
-      executablePath: util['browserPath'],
-      headless: false,
-      ignoreHTTPSErrors: true,
-      userDataDir: util.userDataDir,
-    });
-    let page = await context.newPage();
-    page.on('console', async msg => {
-      for (let i = 0; i < msg.args().length; ++i) {
-        const consoleError =
-            `[console] ${i}: ${await msg.args()[i].jsonValue()}`;
-        if (consoleError.search(
-                'Blocking on the main thread is very dangerous')) {
-          continue;
-        }
-        util.log(consoleError);
-        errorMsg += `${consoleError.substring(0, errorMsgMaxLength)}<br>`;
-      }
-    });
-    page.on('pageerror', (error) => {
-      util.hasError = true;
-      const pageError = `[pageerror] ${error}`;
-      util.log(pageError);
-      errorMsg += `${pageError.substring(0, errorMsgMaxLength)}<br>`;
-    });
-
-    return [context, page];
+const run = async (browserName, modelNameOrURL, backend, numThreads, architecture) => {
+  let modelUrl;
+  let modelName;
+  if (modelNameOrURL.startsWith('http')) {
+    // test custom model by given model url
+    modelUrl = modelNameOrURL;
   } else {
-    return [undefined, undefined];
-  }
-}
-
-async function closeContext(context) {
-  if (!util.dryrun) {
-    await context.close();
-  }
-}
-
-async function runBenchmark(target) {
-  // get benchmarks
-  let benchmarks = [];
-  let benchmarkJson =
-      path.join(path.resolve(__dirname), util.args['benchmark-json']);
-  let targetConfigs = JSON.parse(fs.readFileSync(benchmarkJson));
-
-  for (let config of targetConfigs) {
-    if ('benchmark' in util.args) {
-      config['benchmark'] =
-          intersect(config['benchmark'], util.args['benchmark'].split(','));
-    }
-    if (!config['benchmark']) {
-      continue;
-    }
-
-    if (target === 'conformance') {
-      if ('conformance-backend' in util.args) {
-        config['backend'] = util.args['conformance-backend'].split(',');
-      } else {
-        // backends in json file are ignored for conformance
-        config['backend'] = ['webgpu', 'webgl', 'wasm'];
-      }
-      for (let backend of config['backend']) {
-        if (util.conformanceBackends.indexOf(backend) < 0) {
-          util.conformanceBackends.push(backend);
-        }
-      }
-    } else if (target === 'performance') {
-      if ('performance-backend' in util.args) {
-        config['backend'] = util.args['performance-backend'].split(',');
-      } else if (!('backend' in config)) {
-        config['backend'] = ['webgpu', 'webgl', 'wasm'];
-      }
-      for (let backend of config['backend']) {
-        if (util.performanceBackends.indexOf(backend) < 0) {
-          util.performanceBackends.push(backend);
-        }
-      }
-    }
-
-    if ('architecture' in config && 'architecture' in util.args) {
-      config['architecture'] = intersect(
-          config['architecture'], util.args['architecture'].split(','));
-      if (!config['architecture']) {
-        continue;
-      }
-    }
-
-    if ('inputSize' in config && 'input-size' in util.args) {
-      config['inputSize'] = intersect(
-          config['inputSize'], util.args['input-size'].split(',').map(Number));
-      if (!config['inputSize']) {
-        continue;
-      }
-    }
-
-    if ('inputType' in config && 'input-type' in util.args) {
-      config['inputType'] =
-          intersect(config['inputType'], util.args['input-type'].split(','));
-      if (!config['inputType']) {
-        continue;
-      }
-    }
-
-    let seqArray = [];
-    for (let p of util.parameters) {
-      seqArray.push(
-          p in config ? (Array.isArray(config[p]) ? config[p] : [config[p]]) :
-                        ['']);
-    }
-    benchmarks = benchmarks.concat(cartesianProduct(seqArray));
+    // test existed models of TFJS E2E Benchmark
+    modelName = modelNameOrURL;
   }
 
-  // run benchmarks
-  let benchmarksLength = benchmarks.length;
-  let previousBenchmarkName = '';
-
-  // format: testName, warmup_webgpu, average_webgpu, best_webgpu, warmup_webgl,
-  // average_webgl, best_webgl, warmup_wasm, average_wasm, best_wasm,
-  // warmup_cpu, average_cpu, best_cpu {op: {webgpu, webgl, wasm, cpu}}
-  let results = [];
-  let defaultValue = 'NA';
-  let backendsLength = util.allBackends.length;
-  let metrics = util.targetMetrics[target];
-  if (target === 'performance' && util.runTimes === 0) {
-    metrics.length = 1;
-  }
-  let metricsLength = metrics.length;
-  // for errorMsg
-  let resultMetricsLength = metricsLength;
-  if (target === 'conformance') {
-    resultMetricsLength += 1;
-  }
-  let context;
-  let page;
-
-  if (!('new-context' in util.args)) {
-    [context, page] = await startContext();
+  const userDataDir = util.userDataDir[util.platform][browserName];
+  if (util.settings.cleanUserDataDir) {
+    // Cleanup user data dir
+    util.ensureNoDir(userDataDir);
+    fs.mkdirSync(userDataDir, {recursive: true});
   }
 
-  let task = '';
-  if (target === 'conformance') {
-    task = 'correctness';
-  } else if (target === 'performance') {
-    task = 'performance';
+  const browser = await puppeteer.launch({
+    args: util.settings.browserArgs[backend],
+    executablePath: util.browserPath[util.platform][browserName],
+    headless: false,
+    ignoreHTTPSErrors: true,
+    userDataDir: userDataDir,
+  });
+
+  const page = await browser.newPage();
+  page.setDefaultTimeout(3000000); // 3 min
+
+  // set numRuns by value of parameter 'run'
+  await page.goto(`https://${util.settings.benchmarkServer.ip}:` +
+      `${util.settings.benchmarkServer.port[backend]}/local-benchmark/` +
+      `index.html?run=${util.settings.runTimes}`);
+
+  // wait gui load
+  const gui = await page.waitForSelector('.children', {timetout: 180000});
+
+  // await util.sleep(10000);
+  // const idForAriaLabelledby = {};
+  // await page.$$eval('div.name', els => els.forEach(el => console.log(`8888888888888888888888 ${el.textContent}`)));
+
+  // backend = tflite
+  await page.select('[aria-labelledby="lil-gui-name-7"]', 'tflite');
+
+  if (backend === 'wasm') {
+    // click checkbox "webnn delegate" to not use webnn delegate
+    await page.click('input[type="checkbox"]');
   }
 
-  let needWasmStatus = true;
-  for (let i = 0; i < benchmarksLength; i++) {
-    let benchmark = benchmarks[i];
-    let benchmarkName = benchmark.slice(0, -1).join('-');
-    let backend = benchmark[benchmark.length - 1];
-    let backendIndex = util.allBackends.indexOf(backend);
+  if (numThreads !== undefined) {
+    // set numThreads
+    await page.select(
+      '[aria-labelledby="lil-gui-name-20"]', numThreads.toString());
+  }
 
-    util.log(`[${i + 1}/${benchmarksLength}] ${benchmark}`);
+  if (modelUrl !== undefined) {
+    // set models = 'custom'
+    await page.select('[aria-labelledby="lil-gui-name-1"]', 'custom');
 
-    if ('new-context' in util.args) {
-      let traceFile = undefined;
-      if ('trace' in util.args) {
-        traceFile = `${util.timestampDir}/${
-            benchmark.join('-').replace(/ /g, '_')}-trace.json`;
-      }
-      [context, page] = await startContext(traceFile);
+    // set modelUrl
+    const modelUrlSelector =
+        'input[placeholder="https://your-domain.com/model-path/model.json"]';
+    await page.waitForSelector(modelUrlSelector)
+              .then(() => page.type(modelUrlSelector, modelUrl));
+  } else {
+    // set models = modelName
+    await page.select('[aria-labelledby="lil-gui-name-1"]', modelName);
+
+    if (modelName === 'MobileNetV3') {
+      // set architectures select
+      await page.waitForSelector('[aria-labelledby="lil-gui-name-22"]', {timetout: 180000});
+      await page.select('[aria-labelledby="lil-gui-name-22"]', architecture);
     }
+  }
 
-    // prepare result placeholder
-    if (benchmarkName != previousBenchmarkName) {
-      let placeholder = [benchmarkName].concat(
-          Array(backendsLength * resultMetricsLength).fill(defaultValue));
-      if (target === 'performance' && util.breakdown) {
-        placeholder = placeholder.concat({});
-      }
-      results.push(placeholder);
-      previousBenchmarkName = benchmarkName;
-    }
-    let result = results[results.length - 1];
+  // click 'Run benchmark' button
+  await page.click('#lil-gui-name-8');
 
-    if (util.dryrun) {
-      let metricIndex = 0;
-      while (metricIndex < metricsLength) {
-        if (target === 'conformance') {
-          result[backendIndex * resultMetricsLength + metricIndex + 1] = 'true';
-        } else if (target === 'performance') {
-          let tmpIndex = backendIndex * resultMetricsLength + metricIndex;
-          result[tmpIndex + 1] = tmpIndex + 1;
-          let op_time = result[backendsLength * resultMetricsLength + 1];
-          for (let i = 0; i < 3; i++) {
-            let op = `op${i}`;
-            if (!(op in op_time)) {
-              op_time[op] = Array(backendsLength).fill(defaultValue);
+  await page.waitForSelector(
+      `#timings > tbody > tr:nth-child(4)`, // Subsequent average
+      {timeout: 600000});
+  const value = await page.$eval(
+        '#timings > tbody > tr:nth-child(4) > td:nth-child(2)',
+        el => el.textContent);
+  util.log(
+      `[${new Date().toLocaleString()}] Result (numThreads=${numThreads}):` +
+      ` Subsequent Average [${value}]`);
+
+  await browser.close();
+
+  // return number value part for later comparison
+  return Promise.resolve(parseFloat(value.split(' ')[0]));
+};
+
+const runBenchmark = async () => {
+  const settings = util.settings;
+  const benchmarkTests = util.parseJsonFile('benchmark-s.json');
+  let results = {};
+  let index = 1;
+  let subsequentAverageTime;
+
+  for (let test of benchmarkTests) {
+    results[test.solution] = {};
+    util.log(`Performance test ${index}: ${test.solution}`);
+    for (let model of test.model) {
+      results[test.solution][model.name] = {};
+      util.log(`[${new Date().toLocaleString()}] Test Model:`+
+          ` [${model.name}](${model.modelUrl})`);
+      for (let browser of settings.browser) {
+        results[test.solution][model.name][browser] = {};
+        for (let backend of settings.backend) {
+          results[test.solution][model.name][browser][backend] = [];
+          util.log(`Run ${browser.toUpperCase()} browser` +
+              ` "${util.browserPath[util.platform][browser]}"` +
+              ` by ${backend.toUpperCase()} backend` +
+              ` using args "${settings.browserArgs[backend]}"`);
+          for (let numThreads of settings.numThreads) {
+            subsequentAverageTime = 'NA';
+            for (let runTime = 1; runTime <= 5; ++runTime) {
+              try {
+                util.log(`Run ${model.name} model at time ${runTime}`);
+                // kill target browser before testing
+                util.killBrowser(browser);
+                subsequentAverageTime =
+                    await run(browser, model.modelUrl, backend, numThreads, model.architecture);
+                break;
+              } catch (error) {
+                // util.log(`Failed to run ${model.name} model with error ${error.toString()}`);
+                await util.sleep(30000);
+                continue;
+              }
             }
-            op_time[op][backendIndex] = i * backendsLength + backendIndex + 1;
+            results[test.solution][model.name][browser][backend].push(
+                subsequentAverageTime);
+            console.log(`results[${test.solution}][${model.name}][${browser}][${backend}] = [${results[test.solution][model.name][browser][backend]}]`);
+            await util.sleep(util.settings['idelTime']);
           }
         }
-        metricIndex += 1;
-      }
-    } else {
-      // get url
-      let url =
-          `${util.benchmarkUrl}/e2e/benchmarks/local-benchmark?task=${task}`;
-      for (let index = 0; index < util.parameters.length; index++) {
-        if (benchmarks[i][index]) {
-          url += `&${util.parameters[index]}=${benchmarks[i][index]}`;
-        }
-      }
-      url += `&${util.benchmarkUrlArgs}`;
-      console.log(url);
-
-      await page.goto(url);
-
-      let childIndex;
-      if (target === 'performance') {
-        // 5th line is Subsequent average
-        childIndex = 5;
-      } else if (target === 'conformance') {
-        // 4th line is conformance result
-        childIndex = 4;
-      }
-
-      try {
-        await page.waitForSelector(
-            `#timings > tbody > tr:nth-child(${childIndex})`,
-            {timeout: util.timeout});
-      } catch (error) {
-      }
-
-      // handle errorMsg
-      if (target === 'conformance') {
-        results[results.length - 1][(backendIndex + 1) * resultMetricsLength] =
-            errorMsg;
-      }
-      errorMsg = '';
-
-      // pause if needed
-      if ('pause-test' in util.args) {
-        const readlineInterface = readline.createInterface(
-            {input: process.stdin, output: process.stdout});
-        await new Promise(resolve => {
-          readlineInterface.question('Press Enter to continue...\n', resolve);
-        });
-      }
-
-      // quit with error
-      if (util.hasError) {
-        if (target === 'conformance') {
-          results[results.length - 1][backendIndex * resultMetricsLength + 1] =
-              'false';
-        }
-        util.hasError = false;
-        continue;
-      }
-
-      // handle result
-      let metricIndex = 0;
-      let typeIndex = 1;
-      while (metricIndex < metricsLength) {
-        let selector = `#timings > tbody > tr:nth-child(${typeIndex})`;
-        try {
-          await page.waitForSelector(selector, {timeout: util.timeout});
-        } catch (error) {
-          break;
-        }
-        const type = await page.$eval(
-            selector + ' > td:nth-child(1)', el => el.textContent);
-        if (type.includes(metrics[metricIndex])) {
-          let value = await page.$eval(
-              selector + ' > td:nth-child(2)', el => el.textContent);
-          if (target === 'performance') {
-            value = parseFloat(value.replace(' ms', ''));
-          }
-          results[results.length - 1][backendIndex * resultMetricsLength + metricIndex + 1] =
-              value;
-          metricIndex += 1;
-        }
-        typeIndex += 1;
-      }
-
-      // get breakdown data
-      if (target === 'performance' && util.breakdown) {
-        try {
-          await page.waitForSelector(
-              '#kernels > tbody > tr:nth-child(1)', {timeout: util.timeout});
-          let row = 1;
-          while (true) {
-            let op = await page.$eval(
-                '#kernels > tbody > tr:nth-child(' + row +
-                    ') > td:nth-child(1) > span',
-                el => el.title);
-            if (op.substr(-4, 4) === '__op') {
-              row += 1;
-              continue;
-            }
-            let time = await page.$eval(
-                '#kernels > tbody > tr:nth-child(' + row +
-                    ') > td:nth-child(2)',
-                el => el.textContent);
-            let op_time =
-                results[results.length - 1][backendsLength * resultMetricsLength + 1];
-            if (!(op in op_time)) {
-              op_time[op] = Array(backendsLength).fill(defaultValue);
-            }
-            op_time[op][backendIndex] = parseFloat(time);
-            row += 1;
-          }
-        } catch (error) {
-        }
-      }
-
-      if (needWasmStatus && target === 'performance' && backend === 'wasm') {
-        let status = await page.$eval('#env', el => el.textContent);
-        let match = status.match(
-            'WASM_HAS_MULTITHREAD_SUPPORT: (.*)  WASM_HAS_SIMD_SUPPORT: (.*)  WEBGL_CPU_FORWARD');
-        util.wasmMultithread = match[1];
-        util.wasmSIMD = match[2];
-        needWasmStatus = false;
-      }
-    }
-
-    util.log(result);
-
-    if ('new-context' in util.args) {
-      await closeContext(context);
-    }
-  }
-
-  if (!('new-context' in util.args)) {
-    await closeContext(context);
-  }
-
-  if (target === 'performance') {
-    let fileName = `${util.timestamp.substring(0, 8)}.json`;
-    let file = path.join(util.timestampDir, fileName);
-    fs.writeFileSync(file, JSON.stringify(results));
-    if ('upload' in util.args) {
-      let result = spawnSync('scp', [
-        file,
-        `wp@wp-27.sh.intel.com:/workspace/project/work/tfjs/perf/${
-            util.platform}/${util['gpuDeviceId']}`
-      ]);
-      if (result.status !== 0) {
-        util.log('[ERROR] Failed to upload report');
-      } else {
-        util.log('[INFO] Report was successfully uploaded');
       }
     }
   }
-
-  if ('trace' in util.args) {
-    await parseTrace();
-  }
+  index++;
 
   return Promise.resolve(results);
 }

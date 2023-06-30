@@ -1,15 +1,16 @@
 ## Introduction
-This is an automation test framework for TFJS
+This is an automation test framework for WebNN
 
 ## Supported OS
 
 * Windows
 * Linux
-* macOS
 
 ## Supported Browser
 
-* Chrome
+* Chrome - download URL:
+
+* Edge - download URL: https://www.microsoft.com/en-us/edge/download
 
 ## Dependencies
 

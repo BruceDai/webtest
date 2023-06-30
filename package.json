@@ -1,11 +1,15 @@
 {
-  "name": "tfjstest",
+  "name": "webnntest",
   "version": "1.0.0",
-  "description": "TFJS Automation Test",
+  "description": "WebNN Automation Test",
+  "scripts": {
+    "start": "node src/main.js"
+  },
   "dependencies": {
     "clang-format": "1.6.0",
+    "csv-stringify": "^6.4.0",
     "nodemailer": "6.4.6",
-    "puppeteer": "19.7.5",
+    "puppeteer-core": "^20.7.3",
     "systeminformation": "5.17.12",
     "yargs": "16.2.0"
   },

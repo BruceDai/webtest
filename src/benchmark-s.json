@@ -1,0 +1,13 @@
+[
+  // https://developers.google.com/mediapipe/solutions/guide#available_solutions
+  {
+    "solution": "Object detection",
+    "model": [
+      {
+        "name": "EfficientDet-Lite0 (float 32)",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/object_detector/efficientdet_lite0/float16/latest/efficientdet_lite0.tflite",
+        "inputShape": "320 x 320"
+      }
+    ]
+  }
+]

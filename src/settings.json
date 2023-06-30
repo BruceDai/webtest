@@ -1,0 +1,38 @@
+{
+  "benchmarkServer": {
+    "ip": "",
+    "port": {
+      "wasm": 8090,
+      "webnn-cpu": 8080
+    }
+  },
+  "runTimes": 50,
+  "numThreads": [1, 2, 4],
+  // windows: chrome = "chrome_canary", edge = "edge_canary"
+  // linux: chrome = "chrome_dev", edge = "edge_dev"
+  "browser": ["chrome", "edge"],
+  "browserArgs": {
+    "wasm": [
+      "--enable-experimental-web-platform-features",
+      "--enable-features=SharedArrayBuffer"
+    ],
+    "webnn-cpu": [
+      "--enable-experimental-web-platform-features"
+    ]
+  },
+  "backend": ["webnn-cpu", "wasm"],
+  "idelTime": 30000, // min
+  "cleanUserDataDir": true,
+  "resultServer": {
+    "user": "webnn",
+    "ip": "",
+    "saveDir": "/home/webnn/test-results"
+  },
+  "mailService": {
+    "user": "",
+    "host": "",
+    "port": 25,
+    "from": "",
+    "to": ""
+  }
+}

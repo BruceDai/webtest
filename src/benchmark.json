@@ -1,114 +1,198 @@
 [
+  // https://developers.google.com/mediapipe/solutions/guide#available_solutions
   {
-    "benchmark": "MobileNetV3",
-    "architecture": ["small_075", "small_100", "large_075", "large_100"],
-    "backend": ["wasm", "webgl", "webgpu"]
+    "solution": "Object detection",
+    "model": [
+      {
+        "name": "EfficientDet-Lite0 (float 32)",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/object_detector/efficientdet_lite0/float16/latest/efficientdet_lite0.tflite",
+        "inputShape": "320 x 320"
+      },
+      {
+        "name": "EfficientDet-Lite2 (float 32)",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/object_detector/efficientdet_lite2/float32/latest/efficientdet_lite2.tflite",
+        "inputShape": "448 x 448"
+      },
+      {
+        "name": "SSDMobileNet-V2 (float 32)",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/object_detector/ssd_mobilenet_v2/float32/latest/ssd_mobilenet_v2.tflite",
+        "inputShape": "256 x 256"
+      }
+    ]
   },
   {
-    "benchmark": "MobileNetV2",
-    "architecture": ["050", "075", "100"],
-    "backend": ["wasm", "webgl", "webgpu"]
+    "solution": "Image classification",
+    "model": [
+      {
+        "name": "EfficientNet-Lite0 (float 32)",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/image_classifier/efficientnet_lite0/float32/latest/efficientnet_lite0.tflite",
+        "inputShape": "224 x 224"
+      },
+      {
+        "name": "EfficientNet-Lite2 (float 32)",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/image_classifier/efficientnet_lite2/float32/latest/efficientnet_lite2.tflite",
+        "inputShape": "224 x 224"
+      }
+    ]
   },
   {
-    "benchmark": "HandPoseDetector",
-    "architecture": ["lite", "full"],
-    "backend": ["wasm", "webgl", "webgpu"]
+    "solution": "Image segmentation",
+    "model": [
+      {
+        "name": "SelfieMulticlass (256 x 256)",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite",
+        "inputShape": "256 x 256"
+      },
+      {
+        "name": "DeepLab-V3",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/image_segmenter/deeplab_v3/float32/latest/deeplab_v3.tflite",
+        "inputShape": "257 x 257"
+      }
+    ]
   },
   {
-    "benchmark": "HandPoseLandmark",
-    "architecture": ["lite", "full"],
-    "backend": ["wasm", "webgl", "webgpu"]
+    "solution": "Interactive segmentation",
+    "model": [
+      {
+        "name": "MagicTouch",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/interactive_segmenter/magic_touch/float32/latest/magic_touch.tflite",
+        "inputShape": "512 x 512 x 4"
+      }
+    ]
   },
   {
-    "benchmark": "MoveNet-SinglePose",
-    "inputSize": [192, 256],
-    "backend": ["wasm", "webgl", "webgpu"]
+    "solution": "Hand landmark detection",
+    "model": [
+      {
+        "name": "MultiHandDetection",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_detector.tflite",
+        "inputShape": "192 x 192"
+      },
+      {
+        "name": "HandLandmarkDetector",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarks_detector.tflite",
+        "inputShape": "224 x 224"
+      }
+    ]
   },
   {
-    "benchmark": "MoveNet-MultiPose",
-    "backend": ["wasm", "webgl", "webgpu"]
+    "solution": "Gesture recognition",
+    "model": [
+      {
+        "name": "GestureClassifier",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/latest/canned_gesture_classifier.tflite",
+        "inputShape": "192 x 192"
+      },
+      {
+        "name": "GestureEmbedder",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/latest/gesture_embedder.tflite",
+        "inputShape": "224 x 224"
+      }
+    ]
   },
   {
-    "benchmark": "BlazePoseDetector",
-    "backend": ["webgl", "webgpu"]
+    "solution": "Image embedding",
+    "model": [
+      {
+        "name": "MobileNet-V3 (small_075)",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/image_embedder/mobilenet_v3_small/float32/latest/mobilenet_v3_small.tflite",
+        "inputShape": "224 x 224"
+      },
+      {
+        "name": "MobileNet-V3 (large_075)",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/image_embedder/mobilenet_v3_large/float32/latest/mobilenet_v3_large.tflite",
+        "inputShape": "224 x 224"
+      },
+      {
+        "name": "MobileNet-V3_TFJS (small_075)",
+        "modelUrl": "MobileNetV3",
+        "architecture": "small_075",
+        "inputShape": "224 x 224"
+      },
+      {
+        "name": "MobileNet-V3_TFJS (small_100)",
+        "modelUrl": "MobileNetV3",
+        "architecture": "small_100",
+        "inputShape": "224 x 224"
+      },
+      {
+        "name": "MobileNet-V3_TFJS (large_075)",
+        "modelUrl": "MobileNetV3",
+        "architecture": "large_075",
+        "inputShape": "224 x 224"
+      },
+      {
+        "name": "MobileNet-V3_TFJS (large_100)",
+        "modelUrl": "MobileNetV3",
+        "architecture": "large_100",
+        "inputShape": "224 x 224"
+      }
+    ]
   },
   {
-    "benchmark": "BlazePoseLandmark",
-    "architecture": ["lite", "full", "heavy"],
-    "backend": ["webgl", "webgpu"]
+    "solution": "Face detection",
+    "model": [
+      {
+        "name": "BlazeFace (short-range)",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite",
+        "inputShape": "128 x 128"
+      }
+    ]
   },
   {
-    "benchmark": "Coco-SSD",
-    "architecture": ["MobileNetV2", "MobileNetV1"],
-    "backend": ["webgl", "webgpu"]
+    "solution": "Face landmark detection",
+    "model": [
+      {
+        "name": "Blendshape",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_blendshapes.tflite",
+        "inputShape": "1 x 146 x 2"
+      },
+      {
+        "name": "FaceDetector",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_detector.tflite",
+        "inputShape": "192 x 192"
+      },
+      {
+        "name": "FaceMesh-V2",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarks_detector.tflite",
+        "inputShape": "256 x 256"
+      }
+    ]
   },
   {
-    "benchmark": "DeepLabV3",
-    "architecture": ["pascal", "ade20k"],
-    "backend": ["webgl", "webgpu"]
+    "solution": "Pose landmark detection",
+    "model": [
+      // Pose landmarker (lite)
+      {
+        "name": "PoseDetector",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_detector.tflite",
+        "inputShape": "224 x 224 x 3"
+      },
+      {
+        "name": "PoseLandmarker",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarks_detector.tflite",
+        "inputShape": "256 x 256 x 3"
+      }
+    ]
   },
   {
-    "benchmark": "FaceDetection",
-    "inputSize": [128, 192],
-    "backend": ["wasm", "webgl", "webgpu"]
+    "solution": "Text classification",
+    "model": [
+      {
+        "name": "AverageWordEmbedding",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/text_classifier/average_word_classifier/float32/latest/average_word_classifier.tflite",
+        "inputShape": "1 x 256"
+      }
+    ]
   },
   {
-    "benchmark": "FaceLandmarkDetection",
-    "architecture": ["attention_mesh", "face_mesh"],
-    "backend": ["wasm", "webgl", "webgpu"]
-  },
-  {
-    "benchmark": "ArPortraitDepth",
-    "backend": ["wasm", "webgl", "webgpu"]
-  },
-  {
-    "benchmark": "SelfieSegmentation-General",
-    "backend": ["wasm", "webgl", "webgpu"]
-  },
-  {
-    "benchmark": "SelfieSegmentation-Landscape",
-    "backend": ["wasm", "webgl", "webgpu"]
-  },
-  {
-    "benchmark": "AutoML Image",
-    "backend": ["wasm", "webgl", "webgpu"]
-  },
-  {
-    "benchmark": "AutoML Object",
-    "backend": ["wasm", "webgl", "webgpu"]
-  },
-  {
-    "benchmark": "USE - batchsize 30",
-    "backend": ["webgl", "webgpu"]
-  },
-  {
-    "benchmark": "USE - batchsize 1",
-    "backend": ["webgl", "webgpu"]
-  },
-  {
-    "benchmark": "TextToxicity",
-    "backend": ["webgl", "webgpu"]
-  },
-  {
-    "benchmark": "MobileBert",
-    "backend": ["webgl", "webgpu"]
-  },
-  {
-    "benchmark": "posenet",
-    "inputSize": [256, 512],
-    "architecture": ["MobileNetV1", "ResNet50"],
-    "inputType": ["image"],
-    "backend": ["webgl", "webgpu"]
-  },
-  {
-    "benchmark": "bodypix",
-    "inputSize": [0.25, 0.5, 0.75],
-    "architecture": ["ResNet50"],
-    "inputType": ["image"],
-    "backend": ["wasm", "webgl", "webgpu"]
-  },
-  {
-    "benchmark": "speech-commands",
-    "backend": ["wasm", "webgl", "webgpu"]
+    "solution": "Audio classification",
+    "model": [
+      {
+        "name": "YamNet",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/audio_classifier/yamnet/float32/latest/yamnet.tflite",
+        "inputShape": "1 x 15600"
+      }
+    ]
   }
 ]

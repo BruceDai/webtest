@@ -2,11 +2,11 @@
 
 const {exec, execSync} = require('child_process');
 const { exit } = require('process');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 const si = require('systeminformation');
 const util = require('./util.js');
 
-async function getConfig() {
+async function getConfig(browser) {
   // CPU
   const cpuData = await si.cpu();
   let cpuName = cpuData.brand;
@@ -61,10 +61,7 @@ async function getConfig() {
       util['gpuName'] = gpuData.controllers[i].model;
     }
 
-    if (util['platform'] === 'darwin') {
-      const osInfo = await si.osInfo();
-      util['gpuDriverVersion'] = osInfo.release;
-    } else if (util['platform'] === 'linux') {
+    if (util['platform'] === 'linux') {
       util['gpuDriverVersion'] = execSync('glxinfo |grep "OpenGL version"').toString().trim().split(' ').pop();
     }
   }
@@ -76,22 +73,22 @@ async function getConfig() {
         resolve(stdout);
       });
     });
-  } else if (util['platform'] === 'darwin' || util['platform'] === 'linux') {
+  } else if (util['platform'] === 'linux') {
     const osInfo = await si.osInfo();
     util['osVersion'] = osInfo.release;
   }
 
   // Chrome
-  if (util['platform'] === 'win32' && util.args['browser'].match('chrome_')) {
+  if (util['platform'] === 'win32' && browser.includes('chrome')) {
     const info = execSync(
                      `reg query "HKEY_CURRENT_USER\\Software\\Google\\` +
-                     util['chromePath'] + `\\BLBeacon" /v version`)
+                     `Chrome SxS\\BLBeacon" /v version`) // chromePath = 'Chrome SxS';//'Chrome Dev' //Edge
                      .toString();
     const match = info.match('REG_SZ (.*)');
     util['chromeVersion'] = match[1];
   }
 
-  if (util['platform'] !== 'win32' && util['platform'] !== 'darwin' && util['platform'] !== 'linux') {
+  if (util['platform'] !== 'win32' && util['platform'] !== 'linux') {
     getExtraConfig();
   }
 }
@@ -99,7 +96,7 @@ async function getConfig() {
 /*
  * Get extra config info via Chrome
  */
-async function getExtraConfig() {
+async function getExtraConfig() { // TODO EDGE
   const context = await puppeteer.launch({
     defaultViewport: null,
     executablePath: util['browserPath'],
