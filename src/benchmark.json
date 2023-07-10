@@ -39,6 +39,16 @@
     "solution": "Image segmentation",
     "model": [
       {
+        "name": "SelfieSegmenter (square)",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite",
+        "inputShape": "256 x 256"
+      },
+      {
+        "name": "SelfieSegmenter (landscape)",
+        "modelUrl": "https://brucedai.github.io/mediapipe-models/image_segmenter/selfie_segmenter_landscape/float16/latest/selfie_segmenter_landscape.tflite",
+        "inputShape": "144 x 256"
+      },
+      {
         "name": "SelfieMulticlass (256 x 256)",
         "modelUrl": "https://brucedai.github.io/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite",
         "inputShape": "256 x 256"
@@ -125,6 +135,11 @@
         "name": "MobileNet-V3_TFJS (large_100)",
         "modelUrl": "MobileNetV3",
         "architecture": "large_100",
+        "inputShape": "224 x 224"
+      },
+      {
+        "name": "MobileNet-V2Lite_TFJS",
+        "modelUrl": "MobileNetV2Lite",
         "inputShape": "224 x 224"
       }
     ]
