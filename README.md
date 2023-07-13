@@ -1,21 +1,25 @@
 ## Introduction
-This is an automation test framework for WebNN
+This is an automation test framework for test WebNN API.
+
+* Performance test
 
 ## Supported OS
 
 * Windows
 * Linux
 
-## Supported Browser
+## Pre-installed Browser
 
-* Chrome - download URL:
+* [Google Chrome Canary](https://www.google.com/chrome/canary/) / [Dev](https://www.google.com/chrome/dev/)
 
-* Edge - download URL: https://www.microsoft.com/en-us/edge/download
+* [Microsoft Edge Canary / Dev](https://www.microsoft.com/en-us/edge/download)
 
 ## Dependencies
 
 * [Node.js](https://nodejs.org/en/)
 
+* [Yarn](https://www.npmjs.com/package/yarn)
+
 ## Usage
 * yarn
-* node src/main.js // Use --help for more options
+* yarn start

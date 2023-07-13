@@ -1,12 +1,10 @@
 'use strict';
 
 const {exec, execSync} = require('child_process');
-const { exit } = require('process');
-const puppeteer = require('puppeteer-core');
 const si = require('systeminformation');
 const util = require('./util.js');
 
-async function getConfig(browser) {
+const getConfig = async () => {
   // CPU
   const cpuData = await si.cpu();
   let cpuName = cpuData.brand;
@@ -25,7 +23,8 @@ async function getConfig(browser) {
   if (util['platform'] === 'win32') {
     const info =
         execSync(
-            'wmic path win32_VideoController get Name,DriverVersion,Status,PNPDeviceID /value')
+            'wmic path win32_VideoController get Name,DriverVersion,Status,' +
+            'PNPDeviceID /value')
             .toString()
             .split('\n');
     for (let i = 1; i < info.length; i++) {
@@ -62,7 +61,9 @@ async function getConfig(browser) {
     }
 
     if (util['platform'] === 'linux') {
-      util['gpuDriverVersion'] = execSync('glxinfo |grep "OpenGL version"').toString().trim().split(' ').pop();
+      util['gpuDriverVersion'] =
+          execSync('glxinfo |grep "OpenGL version"').toString().trim()
+              .split(' ').pop();
     }
   }
 
@@ -78,89 +79,25 @@ async function getConfig(browser) {
     util['osVersion'] = osInfo.release;
   }
 
-  // Chrome
-  if (util['platform'] === 'win32' && browser.includes('chrome')) {
-    const info = execSync(
-                     `reg query "HKEY_CURRENT_USER\\Software\\Google\\` +
-                     `Chrome SxS\\BLBeacon" /v version`) // chromePath = 'Chrome SxS';//'Chrome Dev' //Edge
-                     .toString();
-    const match = info.match('REG_SZ (.*)');
-    util['chromeVersion'] = match[1];
+  if (util['platform'] === 'win32') {
+    const chromeInfo = execSync(
+        `reg query "HKEY_CURRENT_USER\\Software\\Google\\` +
+        `Chrome SxS\\BLBeacon" /v version`)
+        .toString();
+    const chromeMatch = chromeInfo.match('REG_SZ (.*)');
+    util['chromeVersion'] = chromeMatch[1];
+    const edgeInfo = execSync(
+        `reg query "HKEY_CURRENT_USER\\Software\\Microsoft\\` +
+        `Edge SxS\\BLBeacon" /v version`)
+        .toString();
+    const edgeMatch = edgeInfo.match('REG_SZ (.*)');
+    util['edgeVersion'] = edgeMatch[1];
+  } else if (util['platform'] === 'linux') {
+    util['chromeVersion'] =
+        execSync('/usr/bin/google-chrome-unstable --version').toString().trim();
+    util['edgeVersion'] =
+        execSync('/usr/bin/microsoft-edge-dev --version').toString().trim();
   }
-
-  if (util['platform'] !== 'win32' && util['platform'] !== 'linux') {
-    getExtraConfig();
-  }
-}
-
-/*
- * Get extra config info via Chrome
- */
-async function getExtraConfig() { // TODO EDGE
-  const context = await puppeteer.launch({
-    defaultViewport: null,
-    executablePath: util['browserPath'],
-    headless: false,
-    ignoreHTTPSErrors: true,
-    userDataDir: util.userDataDir,
-  });
-
-  const page = await context.newPage();
-
-  // Chrome version and revision
-  await page.goto('chrome://version');
-  const chromeNameElem =
-      await page.$('#inner > tbody > tr:nth-child(1) > td.label');
-  let chromeName = await chromeNameElem.evaluate(element => element.innerText);
-  const chromeRevisionElem =
-      await page.$('#inner > tbody > tr:nth-child(2) > td.version');
-  util['chromeRevision'] =
-      await chromeRevisionElem.evaluate(element => element.innerText);
-
-  if (chromeName.includes('Chromium')) {
-    chromeName = 'Chromium';
-  } else {
-    chromeName = 'Chrome';
-  }
-  const versionElement = await page.$('#version');
-  util['chromeVersion'] =
-      await versionElement.evaluate(element => element.innerText);
-
-  // gpuDriverVersion and gpuDeviceId
-  await page.goto('chrome://gpu');
-  let gpuInfo = await page.evaluate(() => {
-    try {
-      let value = document.querySelector('info-view')
-                      .shadowRoot.querySelector('#basic-info')
-                      .querySelector('info-view-table')
-                      .shadowRoot.querySelector('#info-view-table')
-                      .children[4]
-                      .shadowRoot.querySelector('#value')
-                      .innerText;
-      let match =
-          value.match('DEVICE=0x([A-Za-z0-9]{4}).*DRIVER_VERSION=(.*) ');
-      return [match[1], match[2]];
-    } catch (error) {
-      return ['ffff', 'NA'];
-    }
-  });
-
-  util['gpuDeviceId'] = gpuInfo[0].toUpperCase();
-  // Could not get device id
-  const hostname = util['hostname'];
-  if (gpuInfo[0] === 'FFFF') {
-    if (hostname === 'shwde7779') {
-      util['gpuDeviceId'] = '9A49';
-    } else if (hostname === 'bjwdeotc009') {
-      util['gpuDeviceId'] = '3E98';
-    } else if (hostname === 'wp-42') {
-      util['gpuDeviceId'] = '9A49';
-    }
-  }
-
-  util['gpuDriverVersion'] = gpuInfo[1];
-
-  await context.close();
-}
+};
 
 module.exports = getConfig;

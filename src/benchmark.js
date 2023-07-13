@@ -2,16 +2,16 @@
 
 const fs = require('fs');
 const puppeteer = require('puppeteer-core');
-const readline = require('readline');
+const util = require('./util.js');
 
-const util = require('./util.js')
-
-const run = async (browserName, modelNameOrURL, backend, numThreads, architecture) => {
+const run = async (
+    browserName, modelNameOrURL, backend, numThreads, architecture) => {
   let modelUrl;
   let modelName;
   if (modelNameOrURL.startsWith('http')) {
     // test custom model by given model url
     modelUrl = modelNameOrURL;
+    modelName = 'custom';
   } else {
     // test existed models of TFJS E2E Benchmark
     modelName = modelNameOrURL;
@@ -41,11 +41,7 @@ const run = async (browserName, modelNameOrURL, backend, numThreads, architectur
       `index.html?run=${util.settings.runTimes}`);
 
   // wait gui load
-  const gui = await page.waitForSelector('.children', {timetout: 180000});
-
-  // await util.sleep(10000);
-  // const idForAriaLabelledby = {};
-  // await page.$$eval('div.name', els => els.forEach(el => console.log(`8888888888888888888888 ${el.textContent}`)));
+  await page.waitForSelector('.children', {timetout: 180000});
 
   // backend = tflite
   await page.select('[aria-labelledby="lil-gui-name-7"]', 'tflite');
@@ -58,25 +54,23 @@ const run = async (browserName, modelNameOrURL, backend, numThreads, architectur
   if (numThreads !== undefined) {
     // set numThreads
     await page.select(
-      '[aria-labelledby="lil-gui-name-20"]', numThreads.toString());
+        '[aria-labelledby="lil-gui-name-20"]', numThreads.toString());
   }
 
-  if (modelUrl !== undefined) {
-    // set models = 'custom'
-    await page.select('[aria-labelledby="lil-gui-name-1"]', 'custom');
+  // set models = 'custom' or modelName
+  await page.select('[aria-labelledby="lil-gui-name-1"]', modelName);
 
+  if (modelUrl !== undefined) {
     // set modelUrl
     const modelUrlSelector =
         'input[placeholder="https://your-domain.com/model-path/model.json"]';
     await page.waitForSelector(modelUrlSelector)
-              .then(() => page.type(modelUrlSelector, modelUrl));
+        .then(() => page.type(modelUrlSelector, modelUrl));
   } else {
-    // set models = modelName
-    await page.select('[aria-labelledby="lil-gui-name-1"]', modelName);
-
     if (modelName === 'MobileNetV3') {
       // set architectures select
-      await page.waitForSelector('[aria-labelledby="lil-gui-name-22"]', {timetout: 180000});
+      await page.waitForSelector(
+          '[aria-labelledby="lil-gui-name-22"]', {timetout: 180000});
       await page.select('[aria-labelledby="lil-gui-name-22"]', architecture);
     }
   }
@@ -85,11 +79,12 @@ const run = async (browserName, modelNameOrURL, backend, numThreads, architectur
   await page.click('#lil-gui-name-8');
 
   await page.waitForSelector(
-      `#timings > tbody > tr:nth-child(4)`, // Subsequent average
+      `#timings > tbody > tr:nth-child(4)`,
       {timeout: 600000});
+  // Subsequent average time
   const value = await page.$eval(
-        '#timings > tbody > tr:nth-child(4) > td:nth-child(2)',
-        el => el.textContent);
+      '#timings > tbody > tr:nth-child(4) > td:nth-child(2)',
+      (el) => el.textContent);
   util.log(
       `[${new Date().toLocaleString()}] Result (numThreads=${numThreads}):` +
       ` Subsequent Average [${value}]`);
@@ -97,50 +92,56 @@ const run = async (browserName, modelNameOrURL, backend, numThreads, architectur
   await browser.close();
 
   // return number value part for later comparison
+  // for example get 25.7 from '25.7 ms'
   return Promise.resolve(parseFloat(value.split(' ')[0]));
 };
 
 const runBenchmark = async () => {
   const settings = util.settings;
-  const benchmarkTests = util.parseJsonFile('benchmark-s.json');
-  let results = {};
+  const benchmarkTests = util.parseJsonFile('benchmark.json');
+  const results = {};
   let index = 1;
   let subsequentAverageTime;
 
-  for (let test of benchmarkTests) {
+  for (const test of benchmarkTests) {
     results[test.solution] = {};
     util.log(`Performance test ${index}: ${test.solution}`);
-    for (let model of test.model) {
+    for (const model of test.model) {
       results[test.solution][model.name] = {};
       util.log(`[${new Date().toLocaleString()}] Test Model:`+
           ` [${model.name}](${model.modelUrl})`);
-      for (let browser of settings.browser) {
+      for (const browser of settings.browser) {
         results[test.solution][model.name][browser] = {};
-        for (let backend of settings.backend) {
+        for (const backend of settings.backend) {
           results[test.solution][model.name][browser][backend] = [];
           util.log(`Run ${browser.toUpperCase()} browser` +
               ` "${util.browserPath[util.platform][browser]}"` +
               ` by ${backend.toUpperCase()} backend` +
               ` using args "${settings.browserArgs[backend]}"`);
-          for (let numThreads of settings.numThreads) {
+          for (const numThreads of settings.numThreads) {
             subsequentAverageTime = 'NA';
             for (let runTime = 1; runTime <= 5; ++runTime) {
               try {
-                util.log(`Run ${model.name} model at time ${runTime}`);
+                util.log(`Run ${model.name} model with` +
+                    ` numThreads=${numThreads} at time ${runTime}`);
                 // kill target browser before testing
                 util.killBrowser(browser);
                 subsequentAverageTime =
-                    await run(browser, model.modelUrl, backend, numThreads, model.architecture);
+                    await run(browser, model.modelUrl, backend, numThreads,
+                        model.architecture);
                 break;
               } catch (error) {
-                // util.log(`Failed to run ${model.name} model with error ${error.toString()}`);
+                util.log(`Failed to run ${model.name} model with` +
+                    ` numThreads=${numThreads}, error: ${error.toString()}`);
                 await util.sleep(30000);
                 continue;
               }
             }
             results[test.solution][model.name][browser][backend].push(
                 subsequentAverageTime);
-            console.log(`results[${test.solution}][${model.name}][${browser}][${backend}] = [${results[test.solution][model.name][browser][backend]}]`);
+            console.log(`results[${test.solution}][${model.name}][${browser}]` +
+                `[${backend}] = ` +
+                `[${results[test.solution][model.name][browser][backend]}]`);
             await util.sleep(util.settings['idelTime']);
           }
         }
@@ -150,6 +151,6 @@ const runBenchmark = async () => {
   index++;
 
   return Promise.resolve(results);
-}
+};
 
 module.exports = runBenchmark;

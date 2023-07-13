@@ -3,15 +3,17 @@
   "version": "1.0.0",
   "description": "WebNN Automation Test",
   "scripts": {
+    "lint": "eslint . --no-eslintrc --config .eslint.js --ext .js --fix",
     "start": "node src/main.js"
   },
   "dependencies": {
-    "clang-format": "1.6.0",
+    "csv-parse": "^5.4.0",
     "csv-stringify": "^6.4.0",
-    "nodemailer": "6.4.6",
+    "eslint": "^8.44.0",
+    "nodemailer": "^6.9.3",
     "puppeteer-core": "^20.7.3",
-    "systeminformation": "5.17.12",
-    "yargs": "16.2.0"
+    "systeminformation": "^5.18.7",
+    "yargs": "^17.7.2"
   },
   "license": "MIT"
 }
