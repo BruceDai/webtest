@@ -63,7 +63,7 @@ const getConfig = async () => {
     if (util['platform'] === 'linux') {
       util['gpuDriverVersion'] =
           execSync('glxinfo |grep "OpenGL version"').toString().trim()
-              .split(' ').pop();
+              .split('Mesa').pop();
     }
   }
 

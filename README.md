@@ -23,3 +23,9 @@ This is an automation test framework for test WebNN API.
 ## Usage
 * yarn
 * yarn start
+
+
+## BKM
+
+Q1: Command 'glxinfo' not found on Linux platform
+A1: sudo apt install mesa-utils
